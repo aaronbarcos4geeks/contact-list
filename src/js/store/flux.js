@@ -1,42 +1,88 @@
 const getState = ({ getStore, getActions, setStore }) => {
 	return {
 		store: {
-			demo: [
-				{
-					title: "FIRST",
-					background: "white",
-					initial: "white"
-				},
-				{
-					title: "SECOND",
-					background: "white",
-					initial: "white"
-				}
-			]
+			contacts: []
 		},
 		actions: {
-			// Use getActions to call a function within a fuction
-			exampleFunction: () => {
-				getActions().changeColor(0, "green");
+			loadContacts: () => {
+				fetch("https://playground.4geeks.com/contact/agendas")
+					.then((response) => {
+						if (!response.ok) throw new Error("Error al cargar los contactos");
+						return response.json();
+					})
+					.then((data) => {
+						setStore({ contacts: data.agendas });
+					})
+					.catch((error) => {
+						console.error("Error cargando contactos:", error);
+					});
 			},
-			loadSomeData: () => {
-				/**
-					fetch().then().then(data => setStore({ "foo": data.bar }))
-				*/
+
+			createContact: (contact) => {
+				fetch(`https://playground.4geeks.com/contact/agendas/${contact.name}`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(contact)
+				})
+					.then((response) => {
+						if (!response.ok) throw new Error("Error al crear el contacto");
+						return response.json();
+					})
+					.then(() => {
+						getActions().loadContacts();
+					})
+					.catch((error) => {
+						console.error("Error creando contacto:", error);
+					});
 			},
-			changeColor: (index, color) => {
-				//get the store
-				const store = getStore();
 
-				//we have to loop the entire demo array to look for the respective index
-				//and change its color
-				const demo = store.demo.map((elm, i) => {
-					if (i === index) elm.background = color;
-					return elm;
-				});
+			updateContact: (contact, updatedContact) => {
+				fetch(`https://playground.4geeks.com/contact/agendas/${contact.slug}/contacts/${contact.id}`, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(updatedContact)
+				})
+					.then((response) => {
+						if (!response.ok) throw new Error("Error al actualizar el contacto");
+						return response.json();
+					})
+					.then(() => {
+						getActions().loadContacts();
+					})
+					.catch((error) => {
+						console.error("Error actualizando contacto:", error);
+					});
+			},
 
-				//reset the global store
-				setStore({ demo: demo });
+			deleteContact: (slug) => {
+				fetch(`https://playground.4geeks.com/contact/agendas/${slug}`, {
+					method: "DELETE"
+				})
+					.then((response) => {
+						if (!response.ok) throw new Error("Error al eliminar el contacto");
+						getActions().loadContacts();
+					})
+					.catch((error) => {
+						console.error("Error eliminando contacto:", error);
+					});
+			},
+
+			confirmDelete: (id, showModal, setShowModal) => {
+				setShowModal(true);
+				const handleConfirm = () => {
+					getActions()
+						.deleteContact(id)
+						.then(() => {
+							setShowModal(false);
+						})
+						.catch((error) => {
+							console.error("Error confirmando eliminación:", error);
+						});
+				};
+				return {
+					confirm: handleConfirm,
+					cancel: () => setShowModal(false)
+				};
 			}
 		}
 	};
